@@ -27,6 +27,7 @@ def normalise_letter_case(text):
     text = text.capitalize()
     a = re.findall(r'.\. +.', text)
     a += (re.findall(r'\n +.', text))
+    a += (re.findall(r'\n.', text))
     b = []
     for x in a:
         b.append(x.replace(x[-1], x[-1].upper()))
@@ -56,5 +57,5 @@ text = normalise_letter_case(text)
 text = fix_misspelled_words(text, ' iz ', ' is ')
 text = insert_sentence(text, 4, ' '.join(x[-1] for x in [x.split() for x in text.split('.')][:-1]).capitalize() + '.')
 
-print(text)
-print(f"Count of spaces: {spaces_count}")
+# print(text)
+# print(f"Count of spaces: {spaces_count}")
