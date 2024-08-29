@@ -1,0 +1,12 @@
+[
+  {
+    "type": "News",
+    "text": "Some text",
+    "attribute": "Cracow"
+  },
+  {
+    "type": "Private ad",
+    "text": "Ad text",
+    "attribute": "2024-09-30"
+  }
+]
