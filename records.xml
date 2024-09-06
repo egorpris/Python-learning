@@ -1,0 +1,12 @@
+<records>
+    <record>
+        <type>News</type>
+        <text>Something happened</text>
+        <attribute>Minsk</attribute>
+    </record>
+    <record>
+        <type>Private ad</type>
+        <text>Ad text</text>
+        <attribute>2024-08-31</attribute>
+    </record>
+</records>
