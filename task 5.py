@@ -2,6 +2,7 @@ import sys
 import os
 import csv
 import string
+import pyodbc
 import xml.etree.ElementTree as ET
 from datetime import date, datetime
 from task_4_1 import normalise_letter_case
@@ -20,7 +21,39 @@ class Publishing:
         statistics.count_letters()
 
 
-class AddNews(Publishing):
+class DbUpdate:
+    def __init__(self):
+        self.type = None
+        self.columns = None
+        self.row = None
+
+    def __db_connect(self):
+        connection = pyodbc.connect('DRIVER={SQLite3 ODBC Driver};'
+                                    'Direct=True;'
+                                    'Database=newsfeed.db;'
+                                    'String Types= Unicode')
+        return connection.cursor()
+
+    def __create(self):
+        cursor = DbUpdate.__db_connect(self)
+        if self.type == 'News':
+            cursor.execute("CREATE TABLE IF NOT EXISTS 'News' (Text varchar(255), City varchar(255), Date date, UNIQUE (Text, City, Date))")
+        elif self.type == 'Advertising':
+            cursor.execute("CREATE TABLE IF NOT EXISTS 'Advertising' (Text varchar(255), ToDate date, DaysLeft int, UNIQUE (Text, ToDate, DaysLeft))")
+        elif self.type == 'Announcement':
+            cursor.execute("CREATE TABLE IF NOT EXISTS 'Announcement' (Text varchar(255), Phone varchar(255), UNIQUE (Text, Phone)")
+
+    def insert(self):
+        cursor = DbUpdate.__db_connect(self)
+        DbUpdate.__create(self)
+        try:
+            cursor.execute(f"INSERT INTO {self.type} ({self.columns}) VALUES ({self.row})")
+        except pyodbc.Error as e:
+            print("Error occurred:", e)
+        cursor.commit()
+
+
+class AddNews(Publishing, DbUpdate):
     def __init__(self, text, city):
         super().__init__()
         self.type = 'News'
@@ -28,20 +61,24 @@ class AddNews(Publishing):
         self.text = text
         self.city = city
         self.publication_content = f"{self.header}\n{self.text}\n{self.city}, {date.today()}\n\n"
+        self.columns = 'Text, City, Date'
+        self.row = f"'{self.text}', '{self.city}', '{date.today()}'"
 
 
-class AddAdvertising(Publishing):
+class AddAdvertising(Publishing, DbUpdate):
     def __init__(self, text, date):
         super().__init__()
-        self.type = 'Private Ad'
+        self.type = 'Advertising'
         self.header = self.type.ljust(40, '-')
         self.text = text
         self.end_date = datetime.strptime(date, '%Y-%m-%d')
         self.days_to_end = abs(datetime.today() - self.end_date)
         self.publication_content = f"{self.header}\n{self.text}\nActual until: {self.end_date}, {self.days_to_end.days} days left\n\n"
+        self.columns = 'Text, ToDate, DaysLeft'
+        self.row = f"'{self.text}', '{self.end_date}', '{self.days_to_end.days}'"
 
 
-class AddAnnouncement(Publishing):
+class AddAnnouncement(Publishing, DbUpdate):
     def __init__(self, text, phone):
         super().__init__()
         self.type = 'Announcement'
@@ -49,6 +86,8 @@ class AddAnnouncement(Publishing):
         self.text = text
         self.phone = phone
         self.publication_content = f"{self.header}\n{self.text}\nPhone: {self.phone}\n\n"
+        self.columns = 'Text, Phone'
+        self.row = f"'{self.text}', '{self.phone}'"
 
 
 class ReadFile:
@@ -172,12 +211,15 @@ def add_record_from_file(input):
         if x['type'] == 'News':
             news = AddNews(x['text'], x['attribute'])
             news.add_record()
-        elif x['type'] == 'Private ad':
+            news.insert()
+        elif x['type'] == 'Advertising':
             add = AddAdvertising(x['text'], x['attribute'])
             add.add_record()
+            add.insert()
         elif x['type'] == 'Announcement':
             anounce = AddAnnouncement(x['text'], x['attribute'])
             anounce.add_record()
+            anounce.insert()
 
 
 def check_type(t):
@@ -186,16 +228,19 @@ def check_type(t):
         city = input('Where it happened?\n')
         news = AddNews(text, city)
         news.add_record()
+        news.insert()
     elif t == 2:
         text = input('What do you promote?\n')
         date = input('When is the last day of the ad?\n')
         add = AddAdvertising(text, date)
         add.add_record()
+        add.insert()
     elif t == 3:
         text = input('What do you announce?\n')
         phone = input('What is your phone number?\n')
         anounce = AddAnnouncement(text, phone)
         anounce.add_record()
+        anounce.insert()
     elif t == 4:
         file_type = input('Enter file format\n')
         file = input('Enter file name\n')
@@ -205,7 +250,7 @@ def check_type(t):
             a = readfile.read_json()
         elif file_type == 'xml':
             a = readfile.read_xml()
-        else:
+        elif file_type == 'txt':
             a = readfile.read_txt()
         add_record_from_file(a)
 
